@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  # 1. Redis (Jantungnya Antrean/Queue BullMQ)
+  # Kita pakai alpine biar ringan.
+  redis:
+    image: redis:alpine
+    container_name: kirimyos_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+  # 2. Database (Untuk simpan log pesan & user management nanti)
+  # Default user/pass: user/password (Ganti di .env nanti kalau mau production)
+  postgres:
+    image: postgres:15-alpine
+    container_name: kirimyos_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kirimyos
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  redis_data:
+  postgres_data:
