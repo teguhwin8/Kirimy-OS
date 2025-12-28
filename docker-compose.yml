@@ -41,6 +41,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       WEBHOOK_URL: "https://n8n.teguhcoding.com/webhook/f04b43af-b9d3-410a-905b-56d0c0ad17eb"
+      API_KEY: "your_api_key"
     volumes:
       # Mount folder session WA biar kalau container mati, login WA gak ilang
       - ./wa_sessions:/app/wa_sessions

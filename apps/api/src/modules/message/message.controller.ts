@@ -1,6 +1,13 @@
-import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { ApiKeyGuard } from 'src/common/guards/api-key/api-key.guard';
 
 interface SendMessageDto {
   to: string;
@@ -10,6 +17,7 @@ interface SendMessageDto {
   caption?: string;
 }
 
+@UseGuards(ApiKeyGuard)
 @Controller('message')
 export class MessageController {
   constructor(@InjectQueue('message-queue') private messageQueue: Queue) {}
