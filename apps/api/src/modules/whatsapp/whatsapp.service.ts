@@ -85,16 +85,35 @@ export class WhatsappService implements OnModuleInit {
       throw new Error('WhatsApp belum terhubung!');
     }
 
-    let formattedTo = to;
-    if (!to.endsWith('@s.whatsapp.net')) {
-      formattedTo = to.replace(/[^0-9]/g, '');
-      if (formattedTo.startsWith('0')) {
-        formattedTo = '62' + formattedTo.slice(1);
-      }
-      formattedTo = formattedTo + '@s.whatsapp.net';
-    }
+    const formattedTo = this.formatPhone(to);
 
     await this.socket.sendMessage(formattedTo, { text: message });
     console.log(`Terkirim ke ${to}: ${message}`);
+  }
+
+  async sendPhoto(to: string, url: string, caption?: string) {
+    if (!this.socket) {
+      throw new Error('WhatsApp belum terhubung!');
+    }
+
+    const formattedTo = this.formatPhone(to);
+
+    await this.socket.sendMessage(formattedTo, {
+      image: { url: url },
+      caption: caption || '',
+    });
+
+    console.log(`Gambar terkirim ke ${to}`);
+  }
+
+  private formatPhone(phone: string): string {
+    let formatted = phone.replace(/[^0-9]/g, '');
+    if (formatted.startsWith('0')) {
+      formatted = '62' + formatted.slice(1);
+    }
+    if (!formatted.endsWith('@s.whatsapp.net')) {
+      formatted += '@s.whatsapp.net';
+    }
+    return formatted;
   }
 }

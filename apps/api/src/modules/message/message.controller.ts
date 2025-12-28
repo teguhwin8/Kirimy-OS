@@ -1,25 +1,49 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+
+interface SendMessageDto {
+  to: string;
+  type: 'text' | 'image';
+  message?: string;
+  url?: string;
+  caption?: string;
+}
 
 @Controller('message')
 export class MessageController {
   constructor(@InjectQueue('message-queue') private messageQueue: Queue) {}
 
   @Post('send')
-  async sendMessage(@Body() body: { to: string; message: string }) {
-    const { to, message } = body;
+  async sendMessage(@Body() body: SendMessageDto) {
+    const { to, type, message, url, caption } = body;
 
-    // Masukkan ke antrean (bukan langsung kirim)
-    await this.messageQueue.add('send-text', {
+    if (!to || !type) {
+      throw new BadRequestException('Field "to" dan "type" wajib diisi!');
+    }
+    if (type === 'text' && !message) {
+      throw new BadRequestException(
+        'Field "message" wajib diisi untuk tipe text!',
+      );
+    }
+    if (type === 'image' && !url) {
+      throw new BadRequestException(
+        'Field "url" wajib diisi untuk tipe image!',
+      );
+    }
+
+    await this.messageQueue.add('send-message', {
+      type,
       to,
       message,
+      url,
+      caption,
     });
 
     return {
       success: true,
       info: 'Pesan masuk antrean',
-      data: { to, message },
+      data: { to, type },
     };
   }
 }
