@@ -9,12 +9,17 @@ import * as qrcode from 'qrcode-terminal';
 import * as path from 'path';
 import * as fs from 'fs';
 import { EventsGateway } from '../events/events.gateway';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit {
   private socket: WASocket;
 
-  constructor(private readonly eventsGateway: EventsGateway) {}
+  constructor(
+    private readonly eventsGateway: EventsGateway,
+    private readonly httpService: HttpService,
+  ) {}
 
   async onModuleInit() {
     await this.connectToWhatsApp();
@@ -33,6 +38,51 @@ export class WhatsappService implements OnModuleInit {
       printQRInTerminal: false,
     });
 
+    this.socket.ev.on('messages.upsert', (update) => {
+      void (async () => {
+        const { messages, type } = update;
+
+        if (type !== 'notify') return;
+
+        for (const msg of messages) {
+          if (!msg.key.fromMe) {
+            console.log('📩 Pesan masuk:', msg);
+
+            const webhookUrl = process.env.WEBHOOK_URL;
+
+            if (webhookUrl) {
+              try {
+                const text =
+                  msg.message?.conversation ||
+                  msg.message?.extendedTextMessage?.text ||
+                  msg.message?.imageMessage?.caption ||
+                  '';
+
+                const payload = {
+                  from: msg.key.remoteJid,
+                  name: msg.pushName,
+                  message: text,
+                  timestamp: msg.messageTimestamp,
+                  full_data: msg,
+                };
+
+                await firstValueFrom(
+                  this.httpService.post(webhookUrl, payload),
+                );
+                console.log(`✅ Webhook forwarded to ${webhookUrl}`);
+              } catch (error) {
+                if (error instanceof Error) {
+                  console.error('❌ Gagal hit webhook:', error.message);
+                } else {
+                  console.error('❌ Gagal hit webhook:', error);
+                }
+              }
+            }
+          }
+        }
+      })();
+    });
+
     this.socket.ev.on(
       'connection.update',
       (update: Partial<ConnectionState>) => {
@@ -42,7 +92,6 @@ export class WhatsappService implements OnModuleInit {
           console.log('\nScan QR Code ini pake WhatsApp di HP:');
           qrcode.generate(qr, { small: true });
 
-          // TAMBAHAN: Kirim QR ke Frontend via WebSocket
           this.eventsGateway.emit('qr', qr);
           this.eventsGateway.emit('status', 'scan_qr');
         }
